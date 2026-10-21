@@ -2,6 +2,8 @@
 
 from datetime import datetime, time, timedelta
 
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -63,6 +65,31 @@ class BookingApiTests(TestCase):
             "starts_at": (slot or self.slot).isoformat(),
         }
 
+    def future_midnight(self) -> datetime:
+        """Return midnight on a future date matching the doctor's workday."""
+        candidate_day = timezone.localdate()
+        while candidate_day.weekday() != self.doctor.working_day:
+            candidate_day += timedelta(days=1)
+
+        midnight = timezone.make_aware(
+            datetime.combine(candidate_day, time.min)
+        )
+        while midnight < timezone.now() + timedelta(hours=1):
+            candidate_day += timedelta(days=7)
+            midnight = timezone.make_aware(
+                datetime.combine(candidate_day, time.min)
+            )
+        return midnight
+
+    def past_working_slot(self) -> datetime:
+        """Return 09:00 on the most recent past occurrence of the workday."""
+        candidate_day = timezone.localdate() - timedelta(days=1)
+        while candidate_day.weekday() != self.doctor.working_day:
+            candidate_day -= timedelta(days=1)
+        return timezone.make_aware(
+            datetime.combine(candidate_day, time(9))
+        )
+
     def test_booking_and_double_booking_rejection(self) -> None:
         """Accept the first booking and reject another claim for that slot."""
         first = self.client.post("/appointments", self.payload(), format="json")
@@ -70,6 +97,108 @@ class BookingApiTests(TestCase):
         self.assertEqual(first.status_code, 201)
         self.assertEqual(second.status_code, 400)
         self.assertIn("already booked", str(second.data))
+
+    def test_booking_at_midnight_is_outside_doctor_hours(self) -> None:
+        """Reject midnight bookings for a doctor working from 06:00 to 18:00."""
+        self.doctor.start_time = time(6)
+        self.doctor.end_time = time(18)
+        self.doctor.save(update_fields=["start_time", "end_time"])
+
+        response = self.client.post(
+            "/appointments",
+            self.payload(self.future_midnight()),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("outside the doctor's working hours", str(response.data))
+
+    def test_availability_returns_free_slots_and_excludes_booked_slots(self) -> None:
+        """List future work-hour slots while omitting an active booking."""
+        url = (
+            f"/doctors/{self.doctor.pk}/availability"
+            f"?date={self.slot.date().isoformat()}"
+        )
+
+        available_response = self.client.get(url)
+
+        self.assertEqual(available_response.status_code, 200)
+        available_slots = available_response.data["available_slots"]
+        self.assertIn(self.slot.isoformat(), available_slots)
+        self.assertTrue(
+            all(
+                datetime.fromisoformat(slot).minute in (0, 30)
+                for slot in available_slots
+            )
+        )
+
+        Appointment.objects.create(
+            doctor=self.doctor,
+            patient=self.patient,
+            starts_at=self.slot,
+        )
+        booked_response = self.client.get(url)
+
+        self.assertEqual(booked_response.status_code, 200)
+        self.assertNotIn(
+            self.slot.isoformat(),
+            booked_response.data["available_slots"],
+        )
+
+    def test_model_validation_rejects_admin_booking_outside_hours(self) -> None:
+        """Reject an out-of-hours booking during Django model-form validation."""
+        self.doctor.start_time = time(6)
+        self.doctor.end_time = time(18)
+        self.doctor.save(update_fields=["start_time", "end_time"])
+        appointment = Appointment(
+            doctor=self.doctor,
+            patient=self.patient,
+            starts_at=self.future_midnight(),
+        )
+
+        with self.assertRaises(DjangoValidationError) as raised:
+            appointment.full_clean()
+
+        self.assertIn(
+            "outside the doctor's working hours",
+            str(raised.exception),
+        )
+
+    def test_admin_rejects_past_booked_appointment(self) -> None:
+        """Prevent staff from saving a booked past appointment in Django admin."""
+        admin_user = get_user_model().objects.create_superuser(
+            username="clinic-admin",
+            email="admin@example.com",
+            password="test-password",
+        )
+        self.client.force_login(admin_user)
+        past_start = self.past_working_slot()
+
+        response = self.client.post(
+            "/admin/bookings/appointment/add/",
+            {
+                "doctor": self.doctor.pk,
+                "patient": self.patient.pk,
+                "starts_at_0": timezone.localtime(past_start).strftime(
+                    "%Y-%m-%d"
+                ),
+                "starts_at_1": timezone.localtime(past_start).strftime(
+                    "%H:%M:%S"
+                ),
+                "status": "booked",
+                "cancellation_reason": "",
+                "_save": "Save",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Appointments must be at least one hour in the future.",
+        )
+        self.assertFalse(
+            Appointment.objects.filter(starts_at=past_start).exists()
+        )
 
     def test_cancellation_releases_slot(self) -> None:
         """Make a cancelled appointment's slot available for a new booking."""
