@@ -1,7 +1,8 @@
-from django.urls import path
+from django.urls import URLPattern, path
+
 from . import views
 
-urlpatterns = [
+urlpatterns: list[URLPattern] = [
     path("", views.home, name="home"),
     path("docs/", views.api_guide, name="api-guide"),
     path("appointments", views.appointment_create),
