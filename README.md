@@ -50,7 +50,7 @@ savannah_clinic/
 │   ├── tests.py                 # Booking API tests
 │   └── migrations/              # Database schema migrations
 ├── templates/bookings/          # Shared layout, home page, and API guide
-└── .github/workflows/ci.yml     # Tests and Render deploy-hook workflow
+└── .github/workflows/ci.yml     # Tests and Render deploy-hook workflow.
 ```
 
 ### System and booking flows
