@@ -21,6 +21,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "status", "cancellation_reason", "created_at"]
+        validators = []
 
     def create(self, validated_data: dict[str, Any]) -> Appointment:
         """Create an appointment through the booking-rule service.
