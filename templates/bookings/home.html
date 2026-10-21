@@ -2,5 +2,21 @@
 {% block title %}Savannah Clinic | Appointment API{% endblock %}
 {% block content %}
 <section class="hero"><div class="eyebrow">Appointment scheduling</div><h1>Reliable clinic bookings, one slot at a time.</h1><p>Explore the booking API, review available appointment routes, or manage doctors, patients, and appointments through the admin portal.</p><a class="button" href="{% url 'api-guide' %}">Explore API guide</a></section>
-<section class="grid" aria-label="Quick links"><article class="card"><h2>Book appointments</h2><p>Create and validate 30-minute doctor appointments through the REST API.</p><a href="{% url 'api-guide' %}#booking">View booking route &rarr;</a></article><article class="card"><h2>Find availability</h2><p>View open slots by doctor and date before a patient books.</p><a href="{% url 'api-guide' %}#availability">View availability route &rarr;</a></article><article class="card"><h2>Manage clinic data</h2><p>Add doctors and patients, then review appointments from the built-in Django admin.</p><a href="/admin/">Open admin portal &rarr;</a></article></section>
+<section class="grid" aria-label="Quick links">
+  <article class="card">
+    <h2>Find a doctor</h2>
+    <p>Browse {{ doctor_count }} doctor{{ doctor_count|pluralize }} and open a ready-to-test availability request.</p>
+    <a href="{% url 'doctor-directory' %}">Browse doctors &rarr;</a>
+  </article>
+  <article class="card">
+    <h2>Explore API routes</h2>
+    <p>See request methods, URLs, example payloads, and booking rules.</p>
+    <a href="{% url 'api-guide' %}#booking">Open endpoint reference &rarr;</a>
+  </article>
+  <article class="card">
+    <h2>Manage clinic data</h2>
+    <p>Add doctors and patients, then review appointments from Django admin.</p>
+    <a href="{% url 'admin:index' %}">Open admin portal &rarr;</a>
+  </article>
+</section>
 {% endblock %}

@@ -5,6 +5,7 @@ from datetime import datetime, time, timedelta
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -97,6 +98,29 @@ class BookingApiTests(TestCase):
         self.assertEqual(first.status_code, 201)
         self.assertEqual(second.status_code, 400)
         self.assertIn("already booked", str(second.data))
+
+    def test_home_page_links_to_doctor_directory_and_api_guide(self) -> None:
+        """Expose distinct doctor and API guide destinations from the home page."""
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse("doctor-directory"))
+        self.assertContains(response, reverse("api-guide"))
+
+    def test_doctor_directory_shows_id_and_availability_url(self) -> None:
+        """Show each doctor ID and a query link for the next workday."""
+        response = self.client.get(reverse("doctor-directory"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f"Doctor ID: {self.doctor.pk}")
+        self.assertContains(
+            response,
+            reverse(
+                "availability",
+                kwargs={"doctor_id": self.doctor.pk},
+            ),
+        )
+        self.assertContains(response, "?date=")
 
     def test_booking_at_midnight_is_outside_doctor_hours(self) -> None:
         """Reject midnight bookings for a doctor working from 06:00 to 18:00."""

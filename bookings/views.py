@@ -6,6 +6,7 @@ from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
@@ -30,7 +31,50 @@ def home(request: HttpRequest) -> HttpResponse:
     Returns:
         The rendered clinic home page.
     """
-    return render(request, "bookings/home.html")
+    return render(
+        request,
+        "bookings/home.html",
+        {"doctor_count": Doctor.objects.count()},
+    )
+
+
+def doctor_directory(request: HttpRequest) -> HttpResponse:
+    """Render doctors with IDs and links to their next scheduled availability.
+
+    The example date for each doctor is the next occurrence of their
+    configured workday, strictly after today's local date. This gives users a
+    usable availability URL even when today's schedule has already passed.
+
+    Args:
+        request: Incoming Django HTTP request.
+
+    Returns:
+        The rendered doctor directory.
+    """
+    today = timezone.localdate()
+    doctor_entries = []
+    for doctor in Doctor.objects.order_by("id"):
+        days_ahead = (doctor.working_day - today.weekday()) % 7 or 7
+        availability_date = today + timedelta(days=days_ahead)
+        availability_path = reverse(
+            "availability",
+            kwargs={"doctor_id": doctor.pk},
+        )
+        doctor_entries.append(
+            {
+                "doctor": doctor,
+                "availability_date": availability_date,
+                "availability_url": (
+                    f"{availability_path}?date={availability_date.isoformat()}"
+                ),
+            }
+        )
+
+    return render(
+        request,
+        "bookings/doctor_directory.html",
+        {"doctor_entries": doctor_entries},
+    )
 
 
 def api_guide(request: HttpRequest) -> HttpResponse:

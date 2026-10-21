@@ -106,6 +106,7 @@ All endpoints are mounted at the site root. Datetimes must be ISO-8601 values wi
 | `PATCH` | `/appointments/{id}/reschedule` | Move an appointment to a newly validated slot |
 | `GET` | `/patients/{id}/appointments` | Return upcoming booked appointments |
 | `GET` | `/` | Landing page |
+| `GET` | `/doctors/` | Browse doctor IDs and open their next availability query |
 | `GET` | `/docs/` | Browser-based API guide |
 | `GET` | `/admin/` | Django admin |
 

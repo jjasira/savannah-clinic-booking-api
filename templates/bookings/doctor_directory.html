@@ -1,0 +1,36 @@
+{% extends "bookings/base.html" %}
+{% block title %}Doctors | Savannah Clinic{% endblock %}
+{% block content %}
+<section class="docs">
+  <div class="eyebrow" style="color:#087b80">Clinic directory</div>
+  <h1 style="font-size:2.3rem">Doctors and availability</h1>
+  <p class="section-intro">
+    Use a doctor's ID in API requests. Each availability link uses the next
+    occurrence of that doctor's configured working day.
+  </p>
+
+  {% if doctor_entries %}
+    <div class="doctor-list">
+      {% for entry in doctor_entries %}
+        <article class="doctor-card">
+          <h2>{{ entry.doctor.name }}</h2>
+          <span class="doctor-id">Doctor ID: {{ entry.doctor.id }}</span>
+          <p class="doctor-meta">
+            Weekly schedule: {{ entry.availability_date|date:"l" }},
+            {{ entry.doctor.start_time|time:"g:i A" }}–{{ entry.doctor.end_time|time:"g:i A" }}<br>
+            Example date: {{ entry.availability_date|date:"D, M j, Y" }}
+          </p>
+          <a class="text-link" href="{{ entry.availability_url }}">
+            Check available slots &rarr;
+          </a>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      No doctors have been added yet. Staff can add doctors through the
+      <a class="text-link" href="{% url 'admin:index' %}">admin portal</a>.
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
