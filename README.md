@@ -182,7 +182,7 @@ The GitHub Actions workflow in `.github/workflows/ci.yml`:
 2. Also runs tests on pushes to `main`.
 3. After a successful push workflow on `main`, sends a request to the Render deploy hook stored in the GitHub Actions secret `RENDER_DEPLOY_HOOK_URL`.
 
-Thus, merges to `main` deploy when they produce a push to that branch and the tests pass. Direct pushes to `main` also trigger deployment; configure branch protection if deployment should only follow reviewed pull requests.
+Thus, merges to `main` deploy when they produce a push to that branch and the tests pass. Direct pushes to `main` also trigger deployment; later might want to configure branch protection if deployment should only follow reviewed pull requests.
 
 ### Run locally
 
